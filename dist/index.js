@@ -4052,6 +4052,7 @@ const artifact_1 = __webpack_require__(214);
 const search_1 = __webpack_require__(575);
 const input_helper_1 = __webpack_require__(583);
 const constants_1 = __webpack_require__(694);
+const path_1 = __webpack_require__(622);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -4088,13 +4089,14 @@ function run() {
                 if (inputs.retentionDays) {
                     options.retentionDays = inputs.retentionDays;
                 }
-                const uploadResponse = yield artifactClient.uploadArtifact(inputs.artifactName, searchResult.filesToUpload, searchResult.rootDirectory, options);
-                if (uploadResponse.failedItems.length > 0) {
-                    core.setFailed(`An error was encountered when uploading ${uploadResponse.artifactName}. There were ${uploadResponse.failedItems.length} items that failed to upload.`);
+                for (const fileToUpload of searchResult.filesToUpload) {
+                    const uploadResponse = yield artifactClient.uploadArtifact(inputs.artifactName || path_1.basename(fileToUpload), [fileToUpload], path_1.dirname(fileToUpload), options);
+                    if (uploadResponse.failedItems.length > 0) {
+                        core.setFailed(`An error was encountered when uploading ${fileToUpload}.`);
+                        return;
+                    }
                 }
-                else {
-                    core.info(`Artifact ${uploadResponse.artifactName} has been successfully uploaded!`);
-                }
+                core.info(`${searchResult.filesToUpload.length} artifact${searchResult.filesToUpload.length > 1 ? 's have' : ' has'} been successfully uploaded!`);
             }
         }
         catch (err) {

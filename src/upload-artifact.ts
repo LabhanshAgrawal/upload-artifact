@@ -3,6 +3,7 @@ import {create, UploadOptions} from '@actions/artifact'
 import {findFilesToUpload} from './search'
 import {getInputs} from './input-helper'
 import {NoFileOptions} from './constants'
+import {basename, dirname} from 'path'
 
 async function run(): Promise<void> {
   try {
@@ -50,23 +51,27 @@ async function run(): Promise<void> {
       if (inputs.retentionDays) {
         options.retentionDays = inputs.retentionDays
       }
-
-      const uploadResponse = await artifactClient.uploadArtifact(
-        inputs.artifactName,
-        searchResult.filesToUpload,
-        searchResult.rootDirectory,
-        options
-      )
-
-      if (uploadResponse.failedItems.length > 0) {
-        core.setFailed(
-          `An error was encountered when uploading ${uploadResponse.artifactName}. There were ${uploadResponse.failedItems.length} items that failed to upload.`
+      for (const fileToUpload of searchResult.filesToUpload) {
+        const uploadResponse = await artifactClient.uploadArtifact(
+          inputs.artifactName || basename(fileToUpload),
+          [fileToUpload],
+          dirname(fileToUpload),
+          options
         )
-      } else {
-        core.info(
-          `Artifact ${uploadResponse.artifactName} has been successfully uploaded!`
-        )
+
+        if (uploadResponse.failedItems.length > 0) {
+          core.setFailed(
+            `An error was encountered when uploading ${fileToUpload}.`
+          )
+          return
+        }
       }
+
+      core.info(
+        `${searchResult.filesToUpload.length} artifact${
+          searchResult.filesToUpload.length > 1 ? 's have' : ' has'
+        } been successfully uploaded!`
+      )
     }
   } catch (err) {
     core.setFailed(err.message)
